@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.datasets import make_classification
 from utils_class.config_reader import (
-    DEBUG_MODE,
-    logging_level,
+    CREATE_PLOTS,
+    logger,
 )  # abs_path, run_name  # , DEBUG_MODE, logging_level
 
 
@@ -41,11 +41,12 @@ def create_with_make_class(sample_size=100000, percentage_bg=0.9):
     )
     # print(df_sample)
 
-    if DEBUG_MODE:
+    if CREATE_PLOTS:
+        logger.debug("Plotting the synthetic features.")
         figure, axes = plt.subplots(3, 4, figsize=(10, 6))
         for col in range(0, 4):
             for row in range(0, 3):
-                print(col + 4 * row)
+                # print(col + 4 * row)
                 sns.histplot(
                     data=df_sample,
                     x=f"feat{col + 4*row}",
@@ -53,7 +54,9 @@ def create_with_make_class(sample_size=100000, percentage_bg=0.9):
                     stat="density",
                     ax=axes[row][col],
                 )
-        plt.show()
+        figure.tight_layout()
+        figure.savefig("debug_plots/feature_distributions.png")
+        # plt.show()
 
     return df_sample
 
@@ -86,4 +89,4 @@ def create_data_set(bg_size=10000, sig_size=500):
 if __name__ == "__main__":
     # Code to run when the script is executed directly
     # create_data_set(10000,500)
-    feat, tar = create_with_make_class(100000, 0.70)
+    df_samp = create_with_make_class(100000, 0.70)
