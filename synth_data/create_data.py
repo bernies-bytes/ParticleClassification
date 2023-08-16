@@ -6,14 +6,16 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 from sklearn.datasets import make_classification
-from utils_class.config_reader import (
+from utils.config_setup import (
     CREATE_PLOTS,
+    run_name,
     logger,
 )  # abs_path, run_name  # , DEBUG_MODE, logging_level
 
 
-def create_with_make_class(sample_size=100000, percentage_bg=0.9):
+def create_synth_data_with_make_classif(sample_size: int=100000, percentage_bg: float=0.9):
     """
     this function uses sklearn's make_classification to create
     a synthetic data set
@@ -55,7 +57,7 @@ def create_with_make_class(sample_size=100000, percentage_bg=0.9):
                     ax=axes[row][col],
                 )
         figure.tight_layout()
-        figure.savefig("debug_plots/feature_distributions.png")
+        figure.savefig(run_name + "/debug_plots/feature_distributions.png")
         # plt.show()
 
     return df_sample
@@ -89,4 +91,4 @@ def create_data_set(bg_size=10000, sig_size=500):
 if __name__ == "__main__":
     # Code to run when the script is executed directly
     # create_data_set(10000,500)
-    df_samp = create_with_make_class(100000, 0.70)
+    df_samp = create_synth_data_with_make_classif(100000, 0.70)
