@@ -57,3 +57,7 @@ CREATE_PLOTS = parser.getboolean("synthetic data", "create_plots")
 data_set = parser.get("synthetic data", "data_set")
 number_of_events = parser.getint("synthetic data", "number_of_events")
 imbalance = parser.getfloat("synthetic data", "imbalance")
+
+# set up sampling
+SAMPLING = parser.getboolean("sampling", "sampling")
+sampler = parser.get("sampling", "sampler")
