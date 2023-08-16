@@ -10,10 +10,10 @@ from utils.config_setup import (
     run_path,
     data_set,
     logger,
+    number_of_events,
+    imbalance
 )  # , DEBUG_MODE, logging_level
 from synth_data.create_data import create_synth_data_with_make_classif
-
-
 ###############################################################################################
 
 ######################################################
@@ -22,5 +22,5 @@ os.mkdir(run_path)
 os.mkdir(run_path + "/debug_plots")
 ######################################################
 if data_set == "synthetic":
-    create_synth_data_with_make_classif(100000, 0.70)
+    data_df = create_synth_data_with_make_classif(number_of_events, imbalance)
 ######################################################

@@ -55,3 +55,5 @@ if not hasattr(logging, "logger_is_configured"):
 # read synthetic data
 CREATE_PLOTS = parser.getboolean("synthetic data", "create_plots")
 data_set = parser.get("synthetic data", "data_set")
+number_of_events = parser.getint("synthetic data", "number_of_events")
+imbalance = parser.getfloat("synthetic data", "imbalance")
