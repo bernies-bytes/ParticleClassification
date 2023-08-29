@@ -53,7 +53,6 @@ if not hasattr(logging, "logger_is_configured"):
 
     logging.logger_is_configured = True  # Flag to indicate logger setup
 
-
 # read synthetic data
 CREATE_PLOTS = parser.getboolean("synthetic data", "create_plots")
 data_set = parser.get("synthetic data", "data_set")
