@@ -1,14 +1,29 @@
 """
 functions for data sampling - over, under & combinations
 """
+
+import numpy as np
+import pandas as pd
+
 from imblearn.over_sampling import RandomOverSampler, SMOTE, SVMSMOTE, BorderlineSMOTE
-from imblearn.under_sampling import  RandomUnderSampler, TomekLinks, ClusterCentroids
+from imblearn.under_sampling import RandomUnderSampler, TomekLinks, ClusterCentroids
 
 from utils.config_setup import logger
 
-def oversample_data(pd_data, whichone, SEED):
+
+def oversample_data(pd_data, whichone, strategy, SEED) -> tuple[np.ndarray, np.ndarray]:
     """
     Oversample the given datafrmae pd_data with the chosen sampler whichone
+    Parameters:
+        pd_data (pandas.DataFrame): The input DataFrame containing features and target.
+        whichone (str): The name of the undersampling technique to use.
+        SEED (int): The random seed for reproducibility.
+        strategy (str): sampling strategy.
+
+    Returns:
+        tuple: A tuple containing two elements:
+            - features_resampled (numpy.ndarray): Resampled features after undersampling.
+            - target_resampled (numpy.ndarray): Resampled target labels after undersampling.
     """
     logger.info("Oversampling the training data with %s sampling.", whichone)
     sampler = None
@@ -17,13 +32,13 @@ def oversample_data(pd_data, whichone, SEED):
     target = pd_data["target"].values
 
     if whichone == "RandomOverSampler":
-        sampler = RandomOverSampler(random_state=SEED)
+        sampler = RandomOverSampler(random_state=SEED, sampling_strategy=strategy)
     elif whichone == "SMOTE":
-        sampler = SMOTE(random_state=SEED)
+        sampler = SMOTE(random_state=SEED, sampling_strategy=strategy)
     elif whichone == "SVMSMOTE":
-        sampler = SVMSMOTE(random_state=SEED)
+        sampler = SVMSMOTE(random_state=SEED, sampling_strategy=strategy)
     elif whichone == "BorderlineSMOTE":
-        sampler = BorderlineSMOTE(random_state=SEED)
+        sampler = BorderlineSMOTE(random_state=SEED, sampling_strategy=strategy)
 
     features_resampled, target_resampled = sampler.fit_resample(features, target)
 
@@ -46,10 +61,21 @@ def oversample_data(pd_data, whichone, SEED):
     return features_resampled, target_resampled
 
 
-def undersample_data(pd_data, whichone, RANDOM):
-
+def undersample_data(
+    pd_data, whichone, strategy, SEED
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Undersample the given datafrmae pd_data with the chosen sampler whichone
+    Parameters:
+        pd_data (pandas.DataFrame): The input DataFrame containing features and target.
+        whichone (str): The name of the undersampling technique to use.
+        random_state (int): The random seed for reproducibility.
+        strategy (str): sampling strategy.
+
+    Returns:
+        tuple: A tuple containing two elements:
+            - features_resampled (numpy.ndarray): Resampled features after undersampling.
+            - target_resampled (numpy.ndarray): Resampled target labels after undersampling.
     """
     logger.info("Undersampling the training data with %s sampling.", whichone)
     sampler = None
@@ -58,11 +84,13 @@ def undersample_data(pd_data, whichone, RANDOM):
     target = pd_data["target"].values
 
     if whichone == "TomekLinks":
-        sampler = TomekLinks()
+        sampler = TomekLinks(sampling_strategy=strategy)
     elif whichone == "RandomUnderSampler":
-        sampler = RandomUnderSampler(random_state=RANDOM)
+        sampler = RandomUnderSampler(random_state=SEED, sampling_strategy=strategy)
     elif whichone == "ClusterCentroids":
-        sampler = ClusterCentroids(voting = 'auto', random_state=RANDOM)
+        sampler = ClusterCentroids(
+            voting="auto", random_state=SEED, sampling_strategy=strategy
+        )
 
     features_resampled, target_resampled = sampler.fit_resample(features, target)
 
@@ -85,13 +113,61 @@ def undersample_data(pd_data, whichone, RANDOM):
     return features_resampled, target_resampled
 
 
+def combined_underover_sample_data(
+    pd_data, whichone, undersamp_ratio, SEED
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Use a combination of under and oversampling to the given
+    datafrmae pd_data with the chosen sampler whichone
 
+    undersamp_ratio (float): percentage of under-sampling the majority class
+    """
+    logger.info(
+        "Combination of over and under sampling the training data "
+        "with %s for under-sampling and %s for over-sampling.",
+        whichone[0],
+        whichone[1]
+    )
 
+    num_majority_class = len(pd_data[pd_data["target"]==0])  # Number of majority class samples
+    num_minority_class = len(pd_data[pd_data["target"]==1])  # Number of majority class samples
 
+    undersample_majority_samples = int(num_majority_class * undersamp_ratio)
+
+    # 'auto' to leave the minority class unchanged
+    under_strategy = {0: undersample_majority_samples, 1: num_minority_class }
+    #under_strategy = undersamp_ratio
+
+    under_feat, under_tar = undersample_data(pd_data, whichone[0], under_strategy, SEED)
+    data_df_for_over = pd.DataFrame(
+        np.c_[under_tar, under_feat], columns=pd_data.columns
+    )
+    over_feat, over_tar = oversample_data(
+        data_df_for_over, whichone[1], 'minority', SEED
+    )
+
+    return over_feat, over_tar
+
+    # feat_0 = pd_data[pd_data[["target"]] == 0]
+    # tar_0 = feat_0["target"].values
+    # feat_0 = feat_0.drop(["target"], axis=1).values
+
+    # feat_1 = pd_data[pd_data[["target"]] == 1]
+    # tar_1 = feat_1["target"].values
+    # feat_1 = feat_1.drop(["target"], axis=1).values
+
+    # feat_under, tar_under, feat_over_tar_over = 0, 0, 0, 0
+
+    # if len(tar_0) > len(tar_1):
+    #    feat_under, tar_under = feat_0, tar_0
+    #    feat_over, tar_over = feat_1, tar_1
+    # else:
+    #    feat_under, tar_under = feat_1, tar_1
+    #    feat_over, tar_over = feat_0, tar_0
 
 
 """
-def combinedsample_custom_data(X, y, whichone_over, whichone_under, RANDOM):
+def combinedsample_custom_data(X, y, whichone_over, whichone_under, SEED):
     print( "----------------------------------------------------------------------------" )
     print( "Custom combination of Over- and Undersampling test...")
     sampler = None

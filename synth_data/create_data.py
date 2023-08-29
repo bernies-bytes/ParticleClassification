@@ -15,7 +15,9 @@ from utils.config_setup import (
 )  # abs_path, run_name  # , DEBUG_MODE, logging_level
 
 
-def create_synth_data_with_make_classif(sample_size: int=100000, percentage_bg: float=0.9):
+def create_synth_data_with_make_classif(
+    sample_size: int = 100000, percentage_bg: float = 0.9
+) -> pd.DataFrame:
     """
     this function uses sklearn's make_classification to create
     a synthetic data set
@@ -63,7 +65,7 @@ def create_synth_data_with_make_classif(sample_size: int=100000, percentage_bg: 
     return df_sample
 
 
-def create_data_set(bg_size=10000, sig_size=500):
+def create_data_set(bg_size: int = 10000, sig_size: int = 500):
     """
     this function creates the feature distributions inspired by
     real data but without respecting the real correlations between features

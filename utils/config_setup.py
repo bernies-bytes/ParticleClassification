@@ -4,6 +4,8 @@ reading in the config file
 import configparser
 import logging
 import os
+import ast
+import re
 
 from utils.file_utils import make_unique_directory
 
@@ -60,4 +62,11 @@ imbalance = parser.getfloat("synthetic data", "imbalance")
 
 # set up sampling
 SAMPLING = parser.getboolean("sampling", "sampling")
-sampler = parser.get("sampling", "sampler")
+sampler_value = parser.get("sampling", "sampler")
+
+if sampler_value.startswith('[') and sampler_value.endswith(']'):
+    sampler = re.findall(r'\b\w+\b', sampler_value)
+else:
+    sampler = sampler_value
+
+undersamp_ratio = parser.getfloat('sampling', 'undersamp_ratio')
