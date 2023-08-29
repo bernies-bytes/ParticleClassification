@@ -4,7 +4,7 @@ reading in the config file
 import configparser
 import logging
 import os
-import ast
+#import ast
 import re
 
 from utils.file_utils import make_unique_directory
