@@ -9,7 +9,11 @@ Available parts of the pipeline:
     - Or reading in your own data (TODO).
     - Over- and under-sampling and a combination of both (`sampling.py`). 
 
-Up next:
+To-do:
+- Train-test-split implementation
+- Then, hyper parameter tuning
+
+Backlog:
 - Feature selection, feature importance.
 - Feature engineeing, feature trafo. 
 - Model setup - hyper parameter tuning.
