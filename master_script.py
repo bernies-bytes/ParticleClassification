@@ -27,7 +27,8 @@ from synth_data.create_data import create_synth_data_with_make_classif
 from sampling import oversample_data, undersample_data, combined_underover_sample_data
 from train_test_splitting import train_test_splitting
 from hyper_parameter_tuning import bayes_hyper_opt
-###############################################################################################
+
+######################################################
 SEED = random.seed(time.time())
 ######################################################
 logger.info("create run directory: %s", run_path)
@@ -51,9 +52,12 @@ train_df, test_df = train_test_splitting(data_df, test_size)
 if enable_sampling:
     if isinstance(sampler, list):
         features_samp, target_samp = combined_underover_sample_data(
-        train_df, sampler, undersamp_ratio, SEED)
+            train_df, sampler, undersamp_ratio, SEED
+        )
     elif sampler in ["RandomOverSampler", "SMOTE", "SVMSMOTE", "BoderlineSMOTE"]:
-        features_samp, target_samp = oversample_data(train_df, sampler, "minority", SEED)
+        features_samp, target_samp = oversample_data(
+            train_df, sampler, "minority", SEED
+        )
     elif sampler in ["TomekLinks", "RandomUnderSampler", "ClusterCentroids"]:
         features_samp, target_samp = undersample_data(
             train_df, sampler, "majority", SEED
@@ -62,9 +66,7 @@ if enable_sampling:
         raise ValueError("Invalid sampler selected.")
 
     train_orig_df = train_df
-    train_df = pd.DataFrame(
-        np.c_[target_samp, features_samp], columns=data_df.columns
-    )
+    train_df = pd.DataFrame(np.c_[target_samp, features_samp], columns=data_df.columns)
     # print(data_samp_df)
 
 ######################################################
@@ -73,4 +75,3 @@ if enable_sampling:
 # and we don't want the folds to be all over/under sampled
 if enable_hypertune:
     bayes_hyper_opt(train_orig_df, test_df)
-    

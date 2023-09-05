@@ -1,6 +1,6 @@
 # ParticleClassification
 
-Python project to classify signal and background particles. 
+Python project to classify signal and background particle events in a detector. 
 
 Available parts of the pipeline:
 
@@ -8,14 +8,15 @@ Available parts of the pipeline:
     - Creating synthetic data for the classification problem (`synth_data/create_data.py`).
     - Or reading in your own data (TODO).
     - Over- and under-sampling and a combination of both (`sampling.py`). 
+    - Train-test splitting of the data set (`train_test_splitting.py`).
+    - Hyper-parameter tuning (`hyper_parameter_tuning.py`). So far, Baysian optimisation with `bayes_opt` is possible. TPE (tree parzen estimator) is coming up.
 
 To-do:
-- Train-test-split implementation
-- Then, hyper parameter tuning
-
-Backlog:
+- TPE hyper parameter tuning. 
 - Feature selection, feature importance.
 - Feature engineeing, feature trafo. 
+
+Backlog:
 - Model setup - hyper parameter tuning.
 - Training, Testing, Cross validation.
 - ...
