@@ -1,3 +1,7 @@
+# pylint: disable=unnecessary-lambda-assignment
+"""
+Module containing functions for optimising XGBoost hyperparameter via bayesian optimisation
+"""
 # pylint: disable=import-error
 import xgboost as xgb
 import pandas as pd
@@ -5,6 +9,11 @@ from bayes_opt import BayesianOptimization
 
 # from bayes_opt.util import UtilityFunction
 from sklearn import metrics
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score
+from imblearn.over_sampling import RandomOverSampler
+import numpy as np
+
 
 from utils.config_setup import (
     logger,
@@ -16,14 +25,7 @@ from utils.config_setup import (
 )
 
 
-import xgboost as xgb
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
-from imblearn.over_sampling import RandomOverSampler
-import numpy as np
-
-
-def XGB_CV(
+def xgb_cv(
     dtrain,
     n_estimators,
     eta,
@@ -36,6 +38,10 @@ def XGB_CV(
     best_metric_glob,
     # best_iter_glob,
 ):
+    """
+    Function that performs cross validation for a given set
+    of XGBoost parameters
+    """
     param_current = {
         "booster": "gbtree",
         # "n_estimators": n_estimators,  # I got the warning that this is unused.
@@ -56,26 +62,31 @@ def XGB_CV(
         "seed": 1001,
     }
 
-    folds = 5
-    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=1001)
+    # stratified split into 5 folds
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1001)
 
     auc_scores = []
 
     for train_index, val_index in skf.split(dtrain.get_data(), dtrain.get_label()):
-        X_train, y_train = (
+        feat_train, target_train = (
             dtrain.get_data()[train_index],
             dtrain.get_label()[train_index],
         )
-        X_val, y_val = dtrain.get_data()[val_index], dtrain.get_label()[val_index]
+        feat_val, target_val = (
+            dtrain.get_data()[val_index],
+            dtrain.get_label()[val_index],
+        )
 
         # Oversample the minority class using RandomOverSampler
         sampler = RandomOverSampler(random_state=1001)
-        X_train_resampled, y_train_resampled = sampler.fit_resample(X_train, y_train)
+        feat_train_resampled, target_train_resampled = sampler.fit_resample(
+            feat_train, target_train
+        )
 
         dtrain_resampled = xgb.DMatrix(
-            X_train_resampled, label=y_train_resampled, missing=999
+            feat_train_resampled, label=target_train_resampled, missing=999
         )
-        dval = xgb.DMatrix(X_val, label=y_val, missing=999)
+        dval = xgb.DMatrix(feat_val, label=target_val, missing=999)
 
         xgbr = xgb.train(
             param_current,
@@ -86,10 +97,10 @@ def XGB_CV(
             verbose_eval=False,
         )
 
-        y_pred = xgbr.predict(
+        target_pred = xgbr.predict(
             dval
         )  # this uses automatically the best iteration because early_stopping_rounds is set
-        auc_score = roc_auc_score(y_val, y_pred)
+        auc_score = roc_auc_score(target_val, target_pred)
         auc_scores.append(auc_score)
 
     avg_auc = np.mean(auc_scores)
@@ -104,11 +115,19 @@ def XGB_CV(
 
 
 def bayes_hyper_opt(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
-    folds = 5
+    """
+    function that carries out the hyper parameter tuning.
+    parameter:
+    df_train is a data frame that contains the training data (unsampled)
+    df_test contains the test data samples to test the trained model with the
+    tuned parameters. It is used to calculate the performances scores at the
+    end of the function.
+    """
+    # folds = 5
     best_metric_glob = -1.0
-    best_iter_glob = 0
+    # best_iter_glob = 0
 
-    #######################################################################################################
+    ######################################################
     # nrrun = 1  # this used to be the index of a for loop
     # samp = "SMOTE"  # this also was an index of a loop
     features_train = df_train.drop(["target"], axis=1).values
@@ -122,23 +141,26 @@ def bayes_hyper_opt(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
     dtrain = xgb.DMatrix(features_train, label=target_train, missing=999)
     dtest = xgb.DMatrix(features_test, label=target_test, missing=999)
 
-    # Create a lambda function that wraps XGB_CV and sets dtrain as a fixed parameter
-    objective_function = lambda n_estimators, eta, max_depth, gamma, min_child_weight, max_delta_step, subsample, colsample_bytree, dtrain=dtrain: XGB_CV(
-        dtrain,
-        n_estimators,
-        eta,
-        max_depth,
-        gamma,
-        min_child_weight,
-        max_delta_step,
-        subsample,
-        colsample_bytree,
-        best_metric_glob,
-        # best_iter_glob,
+    # Create a lambda function that wraps xgb_cv and sets dtrain as a fixed parameter
+    objective_function = (
+        lambda n_estimators, eta, max_depth, gamma, min_child_weight, max_delta_step,
+        subsample, colsample_bytree, dtrain=dtrain: xgb_cv(
+            dtrain,
+            n_estimators,
+            eta,
+            max_depth,
+            gamma,
+            min_child_weight,
+            max_delta_step,
+            subsample,
+            colsample_bytree,
+            best_metric_glob,
+            # best_iter_glob,
+        )
     )
 
     # Create an instance of BayesianOptimization
-    XGB_BO = BayesianOptimization(
+    xgb_bo = BayesianOptimization(
         f=objective_function,  # Use the lambda function as the objective function
         pbounds=para_to_tune,  # Bounds for the hyperparameters
     )
@@ -147,61 +169,110 @@ def bayes_hyper_opt(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
     # init_points: How many steps of random exploration you want to perform.
     # Random exploration can help by diversifying the exploration space.
     # Maximize the Bayesian optimization
-    XGB_BO.maximize(
+    xgb_bo.maximize(
         init_points=bayes_opt_init_pts,
         n_iter=bayes_opt_n_iter,
     )
 
     logger.info(
-        "Hyper-parameter tuning with Bayes-optimisation done (%i initial points and %i iterations )",
+        "Hyper-parameter tuning with Bayes-optimisation done"
+        "(%i initial points and %i iterations )",
         bayes_opt_init_pts,
         bayes_opt_n_iter,
     )
 
     logger.info("Results:")
 
-    logger.info("Best metric (max AUC): %f", XGB_BO.max["target"])
+    logger.info("Best metric (max AUC): %f", xgb_bo.max["target"])
     logger.info("Best parameters:")
 
-    for key, value in XGB_BO.max["params"].items():
-        logger.info("%s: %s",key, value)
+    for key, value in xgb_bo.max["params"].items():
+        logger.info("%s: %s", key, value)
 
     logger.info("Making Predictions on the test set:")
 
     best_param_for_test = {
         "booster": "gbtree",
-        #"n_estimators": XGB_BO.max["params"]["n_estimators"],
-        "max_depth": XGB_BO.max["params"]["max_depth"].astype(int),
-        "gamma": XGB_BO.max["params"]["gamma"],
-        "eta": XGB_BO.max["params"]["eta"],
+        # "n_estimators": xgb_bo.max["params"]["n_estimators"],
+        "max_depth": xgb_bo.max["params"]["max_depth"].astype(int),
+        "gamma": xgb_bo.max["params"]["gamma"],
+        "eta": xgb_bo.max["params"]["eta"],
         "objective": "binary:logistic",
         "nthread": 3,
-        #"silent": True,
+        # "silent": True,
         #'eval_metric': 'logloss',
         "eval_metric": "auc",
-        "subsample": XGB_BO.max["params"]["subsample"],
-        "colsample_bytree": XGB_BO.max["params"]["colsample_bytree"],
-        "min_child_weight": XGB_BO.max["params"]["min_child_weight"],
-        "max_delta_step": XGB_BO.max["params"]["max_delta_step"].astype(int),
+        "subsample": xgb_bo.max["params"]["subsample"],
+        "colsample_bytree": xgb_bo.max["params"]["colsample_bytree"],
+        "min_child_weight": xgb_bo.max["params"]["min_child_weight"],
+        "max_delta_step": xgb_bo.max["params"]["max_delta_step"].astype(int),
         "seed": 1001,
     }
 
-    logger.info("Training with best parameters of Bayes-optimisation and full training set:")
+    logger.info(
+        "Training with best parameters of Bayes-optimisation and full training set:"
+    )
 
     xgb_bayesresult = xgb.train(
-        best_param_for_test, dtrain,
-        num_boost_round=int(XGB_BO.max["params"]["n_estimators"]),
-        #early_stopping_rounds=50,
+        best_param_for_test,
+        dtrain,
+        num_boost_round=int(xgb_bo.max["params"]["n_estimators"]),
+        # early_stopping_rounds=50,
     )
 
     test_prediction = xgb_bayesresult.predict(
-        xgb.DMatrix(dtest.get_data(), missing=999), iteration_range=xgb_bayesresult.best_iteration + 1
+        xgb.DMatrix(dtest.get_data(), missing=999),
+        # iteration_range=xgb_bayesresult.best_iteration + 1,
     )
-    test_prediction2 = test_prediction.round()
+    test_prediction_round = test_prediction.round()
 
-    exit(0)
+    dtest_sig = df_test[df_test["target"] == 1]
+    dtest_bg = df_test[df_test["target"] == 0]
+    features_test_sig = dtest_sig.drop(["target"], axis=1).values
+    features_test_bg = dtest_bg.drop(["target"], axis=1).values
 
-   
+    test_sig_prediction = xgb_bayesresult.predict(
+        xgb.DMatrix(features_test_sig, missing=999)
+    )
+    test_sig_prediction_round = test_sig_prediction.round()
+
+    test_bg_prediction = xgb_bayesresult.predict(
+        xgb.DMatrix(features_test_bg, missing=999)
+    )
+    test_bg_prediction_round = test_bg_prediction.round()
+
+    # CREATE a loop for the stuff below to print the reports (DEBUG logger)
+    samples = [
+        [df_test, test_prediction, test_prediction_round],
+        [dtest_sig, test_sig_prediction, test_sig_prediction_round],
+        [dtest_bg, test_bg_prediction, test_bg_prediction_round],
+    ]
+
+    samples_info = [
+        "complete test set",
+        "signal events of test set",
+        "background events of test set",
+    ]
+
+    for samp_, samp_info_ in zip(samples, samples_info):
+        accuracy_score = metrics.accuracy_score(samp_[0]["target"].values, samp_[2])
+        # roc_auc_score = metrics.roc_auc_score(samp_[0]["target"].values, samp_[1])
+        average_precision_score = metrics.average_precision_score(
+            samp_[0]["target"].values, samp_[1]
+        )
+        precision_score = metrics.precision_score(samp_[0]["target"].values, samp_[2])
+        recall_score = metrics.recall_score(samp_[0]["target"].values, samp_[2])
+        f1_score = metrics.f1_score(
+            samp_[0]["target"].values, samp_[2], average="weighted"
+        )
+        logger.info("results on following data: %s", samp_info_)
+        logger.info("accuracy score: %f", accuracy_score)
+        logger.info("average precision score: %f", average_precision_score)
+        logger.info("precision score: %f", precision_score)
+        logger.info("recall score: %f", recall_score)
+        logger.info("f1 score: %f", f1_score)
+
+
 #############################################################
 if __name__ == "__main__":
     pass
