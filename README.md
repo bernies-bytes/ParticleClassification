@@ -1,6 +1,6 @@
 # ParticleClassification
 
-Python project to classify signal and background particle events in a detector (under construction). 
+Python project to classify signal and background particle events in a detector with XGBoost (under construction). 
 
 Available parts of the pipeline:
 
